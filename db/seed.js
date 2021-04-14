@@ -1,5 +1,5 @@
 // inside db/seed.js
-
+// sudo service postgresql start
 // grab our client with destructuring from the export in index.js
 const {
   client,
@@ -11,6 +11,8 @@ const {
   updatePost,
   getAllPosts,
   getPostsByUser,
+  createTags,
+  addTagsToPost,
 } = require("./index");
 
 // this function should call a query which drops all tables from our database
@@ -19,7 +21,9 @@ async function dropTables() {
     console.log("Starting to drop tables...");
 
     await client.query(`
-    DROP TABLE IF EXISTS posts;
+      DROP TABLE IF EXISTS post_tags;
+      DROP TABLE IF EXISTS tags;
+      DROP TABLE IF EXISTS posts;
       DROP TABLE IF EXISTS users;
       `);
 
@@ -44,16 +48,22 @@ async function createTables() {
         location VARCHAR(255) NOT NULL,
         active BOOLEAN DEFAULT true
       );
-      
-      `);
-    await client.query(`
-        CREATE TABLE posts(
+      CREATE TABLE posts (
         id SERIAL PRIMARY KEY,
         "authorId" INTEGER REFERENCES users(id) NOT NULL,
         title VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
         active BOOLEAN DEFAULT true
-        );
+      );
+      CREATE TABLE tags (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+      );
+      CREATE TABLE post_tags (
+        "postId" INTEGER REFERENCES posts(id) UNIQUE,
+        "tagId" INTEGER REFERENCES tags(id) UNIQUE
+      );
+      
         `);
 
     console.log("Finished building tables!");
@@ -93,9 +103,9 @@ async function createInitialUsers() {
 }
 async function createInitialPosts() {
   try {
-    const users = await getAllUsers();
-    const [albert, sandra, glamgal] = users;
-    console.log("users:", users);
+    const [albert, sandra, glamgal] = await getAllUsers();
+
+    console.log("Starting to create posts...");
     await createPost({
       authorId: albert.id,
       title: "First Post",
@@ -104,18 +114,41 @@ async function createInitialPosts() {
     });
     await createPost({
       authorId: sandra.id,
-      title: "First Post",
-      content:
-        "This is my first post. I hope I love writing blogs as much as I love writing them.",
+      title: "How does this work?",
+      content: "Seriously, does this even do anything?",
     });
     await createPost({
       authorId: glamgal.id,
-      title: "First Post",
-      content:
-        "This is my first post. I hope I love writing blogs as much as I love writing them.",
+      title: "Living the Glam Life",
+      content: "Do you even? I swear that half of you are posing.",
     });
-    // a couple more
+    console.log("Finished creating posts!");
   } catch (error) {
+    console.log("Error creating posts!");
+    throw error;
+  }
+}
+
+async function createInitialTags() {
+  try {
+    console.log("Starting to create tags...");
+
+    const [happy, sad, inspo, catman] = await createTags([
+      "#happy",
+      "#worst-day-ever",
+      "#youcandoanything",
+      "#catmandoeverything",
+    ]);
+    console.log("reached 142");
+    const [postOne, postTwo, postThree] = await getAllPosts();
+
+    await addTagsToPost(postOne.id, [happy, inspo]);
+    await addTagsToPost(postTwo.id, [sad, inspo]);
+    await addTagsToPost(postThree.id, [happy, catman, inspo]);
+
+    console.log("Finished creating tags!");
+  } catch (error) {
+    console.log("Error creating tags!");
     throw error;
   }
 }
@@ -128,7 +161,9 @@ async function rebuildDB() {
     await createTables();
     await createInitialUsers();
     await createInitialPosts();
+    await createInitialTags();
   } catch (error) {
+    console.log("Error during rebuildDB");
     console.error(error);
   }
 }
