@@ -194,6 +194,6 @@ async function testDB() {
   }
 }
 rebuildDB()
-  .then(testDB)
+  // .then(testDB)
   .catch(console.error)
   .finally(() => client.end());
