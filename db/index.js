@@ -62,6 +62,25 @@ async function getAllUsers() {
   return rows;
 }
 
+async function getUserByUsername(username) {
+  try {
+    const {
+      rows: [user],
+    } = await client.query(
+      `
+      SELECT *
+      FROM users
+      WHERE username=$1;
+    `,
+      [username]
+    );
+
+    return user;
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function getUserById(userId) {
   try {
     const {
@@ -162,20 +181,11 @@ async function createTags(tagList) {
     return;
   }
 
-  // need something like: $1), ($2), ($3
   const insertValues = tagList.map((_, index) => `$${index + 1}`).join("), (");
-  // then we can use: (${ insertValues }) in our string template
 
-  // need something like $1, $2, $3
   const selectValues = tagList.map((_, index) => `$${index + 1}`).join(", ");
-  // then we can use (${ selectValues }) in our string template
 
   try {
-    // insert the tags, doing nothing on conflict
-    // returning nothing, we'll query after
-    // select all tags where the name is in our taglist
-    // return the rows from the query
-
     await client.query(
       `
       INSERT INTO tags(name)
@@ -343,6 +353,7 @@ module.exports = {
   client,
   createUser,
   updateUser,
+  getUserByUsername,
   getAllUsers,
   getUserById,
   createPost,
